@@ -1,18 +1,39 @@
 import os
-from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+from dotenv import load_dotenv
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Store your bot token in environment variables
-WEB_APP_URL = os.getenv("WEB_APP_URL")  # Your mini app URL
+# Load environment variables
+load_dotenv()
 
+TOKEN = os.getenv("BOT_TOKEN")
+PORT = int(os.getenv("PORT", 5000))
+RENDER_URL = os.getenv("RENDER_URL")  # e.g. https://yourapp.onrender.com
+
+app = Flask(__name__)
+
+# Create the bot application
+application = Application.builder().token(TOKEN).build()
+
+# Commands
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [KeyboardButton(text="Open Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Click below to open the app:", reply_markup=reply_markup)
+    await update.message.reply_text("Hello! I am alive and running on Render!")
+
+application.add_handler(CommandHandler("start", start))
+
+# Flask route for Telegram webhook
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "OK", 200
+
+# Start Flask server and set webhook when app starts
+@app.before_first_request
+def set_webhook():
+    webhook_url = f"{RENDER_URL}/{TOKEN}"
+    application.bot.set_webhook(url=webhook_url)
 
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.run_polling()
+    app.run(host="0.0.0.0", port=PORT)
