@@ -1,39 +1,25 @@
-import os
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-TOKEN = os.getenv("BOT_TOKEN")
-PORT = int(os.getenv("PORT", 5000))
-RENDER_URL = os.getenv("RENDER_URL")  # e.g. https://yourapp.onrender.com
+from flask import Flask
+from telegram.ext import CommandHandler, Updater
 
 app = Flask(__name__)
 
-# Create the bot application
-application = Application.builder().token(TOKEN).build()
+def start(update, context):
+    update.message.reply_text("Hello!")
 
-# Commands
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I am alive and running on Render!")
+def start_bot():
+    updater = Updater("YOUR_BOT_TOKEN")
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    updater.start_polling()
+    print("Bot started...")
 
-application.add_handler(CommandHandler("start", start))
+# Run the bot once at startup
+with app.app_context():
+    start_bot()
 
-# Flask route for Telegram webhook
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
-    return "OK", 200
+@app.route('/')
+def home():
+    return "Bot is running"
 
-# Start Flask server and set webhook when app starts
-@app.before_first_request
-def set_webhook():
-    webhook_url = f"{RENDER_URL}/{TOKEN}"
-    application.bot.set_webhook(url=webhook_url)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=PORT)
+if __name__ == '__main__':
+    app.run()
