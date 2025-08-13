@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import load_dotenv
 
@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-RENDER_URL = os.getenv("RENDER_URL")  # Example: https://yourapp.onrender.com
+RENDER_URL = os.getenv("RENDER_URL")  # Example: https://your-app-name.onrender.com
+WEB_APP_URL = os.getenv("WEB_APP_URL")  # Your Telegram Mini App URL
 PORT = int(os.getenv("PORT", 5000))
 
 # Create Flask app
@@ -19,7 +20,14 @@ application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # Command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I'm alive on Render 🚀")
+    keyboard = [
+        [InlineKeyboardButton("🚀 Open Mini App", web_app={"url": WEB_APP_URL})]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "Tap below to open the Mini App:",
+        reply_markup=reply_markup
+    )
 
 application.add_handler(CommandHandler("start", start))
 
@@ -36,7 +44,6 @@ def home():
     return "Bot is running on Render!", 200
 
 if __name__ == "__main__":
-    # Set webhook before starting Flask
     import asyncio
     async def set_webhook():
         await application.bot.set_webhook(f"{RENDER_URL}/{BOT_TOKEN}")
